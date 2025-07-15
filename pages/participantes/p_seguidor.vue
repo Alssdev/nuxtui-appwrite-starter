@@ -1,6 +1,6 @@
 <template>
   <div class="p-6 max-w-6xl mx-auto">
-    <h1 class="text-3xl font-bold mb-6 text-center">Participantes - Robofut</h1>
+    <h1 class="text-3xl font-bold mb-6 text-center">Participantes - Seguidor de lineas</h1>
 
     <div class="mb-4">
       <input
@@ -29,16 +29,16 @@
           >
             <td class="p-3">{{ index + 1 }}</td>
             <td class="p-3">
-              <input v-model="p.nombre" class="input-table" />
+              <input v-model="p.Nombres" class="input-table" />
             </td>
             <td class="p-3">
-              <input v-model="p.institucion" class="input-table" />
+              <input v-model="p.Grado_Seccion" class="input-table" />
             </td>
             <td class="p-3">
-              <input v-model="p.categoria" class="input-table" />
+              <input v-model="p.Telefono" class="input-table" />
             </td>
             <td class="p-3">
-              <input v-model="p.tiempo" type="number" step="0.01" class="input-table" />
+              <input v-model="p.Robot" class="input-table" />
             </td>
           </tr>
         </tbody>
@@ -59,18 +59,27 @@
 </template>
 
 <script setup>
+import { Query } from "appwrite";
 import { ref, computed } from 'vue'
-
+const { $databases } = useNuxtApp();
 // Lista simulada de participantes
 const participantes = ref([
 ])
-
+const response = await $databases.listDocuments(
+  '686c5e84001c62957f30', //ID base de datos
+  '686c5fd50012c057e441', //ID coleccion
+  [Query.limit(200),
+    Query.or([Query.equal('Categoria_1','Seguidor'),
+    Query.equal('Categoria_2','Seguidor'),])
+  ]
+)
+participantes.value = response.documents;
 const busqueda = ref('')
 
 // Filtro por nombre
 const participantesFiltrados = computed(() =>
   participantes.value.filter(p =>
-    p.nombre.toLowerCase().includes(busqueda.value.toLowerCase())
+    p.Nombres.toLowerCase().includes(busqueda.value.toLowerCase())
   )
 )
 
