@@ -60,7 +60,8 @@
 
 <script setup>
 import { Query } from "appwrite";
-import { ref, computed } from 'vue'
+import { ref, computed } from 'vue';
+const toast = useToast()
 const { $databases } = useNuxtApp();
 // Lista simulada de participantes
 const participantes = ref([
@@ -84,9 +85,23 @@ const participantesFiltrados = computed(() =>
 )
 
 // Función de guardar (puedes conectar Appwrite aquí)
-const guardarCambios = () => {
-  console.log('Guardado:', JSON.stringify(participantes.value, null, 2))
-  alert('Cambios guardados correctamente.')
+const guardarCambios = async() => {
+  for (let i = 0; i < participantes.value.length; i++) {
+    const participante = participantes.value[i];
+    
+    const updated = await $databases.updateDocument(
+      '686c5e84001c62957f30', //ID base de datos
+      '686c5fd50012c057e441', //ID coleccion
+      participante.$id,
+      {
+        Telefono: participante.Telefono,
+        Robot: participante.Robot,
+        Grado_Seccion: participante.Grado_Seccion
+      }
+    )
+    
+  }
+  toast.add({ title:'Se guardaron los cambios' })
 }
 </script>
 
