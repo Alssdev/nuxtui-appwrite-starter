@@ -84,7 +84,6 @@ const participantesFiltrados = computed(() =>
   )
 )
 
-// Función de guardar (puedes conectar Appwrite aquí)
 const guardarCambios = async() => {
   for (let i = 0; i < participantes.value.length; i++) {
     const participante = participantes.value[i];
