@@ -1,7 +1,7 @@
 <template>
   <div class="p-6">
     <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold">Reporte de Competidores - Fase Clasificatoria - Esquiva Objetos</h1>
+      <h1 class="text-2xl font-bold">Podio Final - Drones</h1>
       <NuxtLink to="/" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
         ← Regresar
       </NuxtLink>
@@ -13,6 +13,7 @@
           <th class="py-2 px-4">Participante</th>
           <th class="py-2 px-4">Ronda 1</th>
           <th class="py-2 px-4">Ronda 2</th>
+          <th class="py-2 px-4">Ronda 3</th>
           <th class="py-2 px-4 font-bold">Tiempo Final</th>
         </tr>
       </thead>
@@ -27,6 +28,7 @@
           </td>
           <td class="py-2 px-4">{{ c.tiempos[1] ?? '-' }}</td>
           <td class="py-2 px-4">{{ c.tiempos[2] ?? '-' }}</td>
+          <td class="py-2 px-4">{{ c.tiempos[3] ?? '-' }}</td>
           <td class="py-2 px-4 font-bold text-green-700">{{ c.menorTiempo }}</td>
         </tr>
       </tbody>
@@ -41,32 +43,27 @@ const { $databases } = useNuxtApp()
 
 const dbId = '686c5e84001c62957f30'
 const collectionTiempos = '686f030d003a9e313b5e' // colección de resultados
-const collectionParticipantes = '686c5fd50012c057e441' // colección de participantes
 
 const competidoresOrdenados = ref([])
 
 const loadReporte = async () => {
+
   const tiempos = await $databases.listDocuments(dbId, collectionTiempos, [
-    Query.equal('Fase', ['Clasificatoria'])
+    Query.equal('Fase', ['Final'])
   ])
-  console.log("TIEMPOS:", tiempos.documents)
+
   const agrupados = {}
-  const participanteIds = new Set()
 
   tiempos.documents.forEach(doc => {
     const participante = doc.Participante
     const ronda = parseInt(doc.Rondas)
     const tiempo = parseFloat(doc.Tiempo)
 
-    // Solo considerar rondas 1 y 2
-    if (ronda > 2) return
-
     if (!agrupados[participante.$id]) {
       agrupados[participante.$id] = { id: participante.$id, tiempos: {}, nombre: participante.Nombres }
     }
 
     agrupados[participante.$id].tiempos[ronda] = tiempo
-    participanteIds.add(participante.$id)
   })
 
   const listaFinal = Object.values(agrupados).map(c => {

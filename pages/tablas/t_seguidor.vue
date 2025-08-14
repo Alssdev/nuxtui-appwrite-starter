@@ -1,7 +1,7 @@
 <template>
   <div class="p-6">
     <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold">Reporte de Competidores - Fase Clasificatoria - Seguidor de lineas</h1>
+      <h1 class="text-2xl font-bold">Podio Final - Drones</h1>
       <NuxtLink to="/" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
         ← Regresar
       </NuxtLink>
@@ -43,48 +43,33 @@ const { $databases } = useNuxtApp()
 
 const dbId = '686c5e84001c62957f30'
 const collectionTiempos = '686f0423002dd87af51f' // colección de resultados
-const collectionParticipantes = '686c5fd50012c057e441' // colección de participantes
 
 const competidoresOrdenados = ref([])
 
 const loadReporte = async () => {
+
   const tiempos = await $databases.listDocuments(dbId, collectionTiempos, [
-    Query.equal('Fase', ['Clasificatoria'])
+    Query.equal('Fase', ['Final'])
   ])
-  console.log("TIEMPOS:", tiempos.documents)
+
   const agrupados = {}
-  const participanteIds = new Set()
 
   tiempos.documents.forEach(doc => {
-    const participante = doc.Participante //Quitar el _ID, tambien en appwrite en todo
+    const participante = doc.Participante
     const ronda = parseInt(doc.Rondas)
     const tiempo = parseFloat(doc.Tiempo)
 
     if (!agrupados[participante.$id]) {
       agrupados[participante.$id] = { id: participante.$id, tiempos: {}, nombre: participante.Nombres }
-    } // nombre: participante.Nombres y borrar lo de abajo 
+    }
 
     agrupados[participante.$id].tiempos[ronda] = tiempo
-    participanteIds.add(participante.$id)
   })
-
-  const nombresMap = {}
-
-  /* for (const id of participanteIds) {
-    try {
-      const participante = await $databases.getDocument(dbId, collectionParticipantes, id)
-      nombresMap[id] = participante.Nombres // asegúrate que el campo se llama "Nombres"
-    } catch (e) {
-      console.error(`No se pudo cargar el participante con ID ${id}`, e)
-      nombresMap[id] = 'Desconocido'
-    }
-  } */
 
   const listaFinal = Object.values(agrupados).map(c => {
     const tiempos = Object.values(c.tiempos)
     return {
       ...c,
-      /* nombre: nombresMap[c.id], */
       menorTiempo: Math.min(...tiempos)
     }
   })
