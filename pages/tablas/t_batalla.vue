@@ -1,93 +1,80 @@
 <template>
-  <div class="max-w-md mx-auto p-6 bg-white rounded shadow">
-    <h2 class="text-2xl font-bold mb-4 text-center">Tabla de Posiciones</h2>
+  <div class="p-6 max-w-4xl mx-auto bg-white rounded-lg shadow-md">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">Podio Competencia - Batalla</h1>
+      <NuxtLink to="/" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+        ← Regresar
+      </NuxtLink>
+    </div>
 
-    <table class="w-full text-left border-collapse">
-      <thead>
-        <tr class="bg-gray-200">
-          <th class="p-2">Posición</th>
-          <th class="p-2">Participante</th>
-          <th class="p-2">Puntos Totales</th>
+    <table class="min-w-full bg-white rounded-lg shadow-md overflow-hidden">
+      <thead class="bg-blue-100 text-gray-800">
+        <tr>
+          <th class="py-2 px-4">Posición</th>
+          <th class="py-2 px-4 text-left">Participante</th>
+          <th class="py-2 px-4">Puntos</th>
         </tr>
       </thead>
       <tbody>
-        <tr
-          v-for="(pos, index) in posiciones"
-          :key="pos.id"
-          :class="{
-            'bg-yellow-200 font-bold': index === 0,
-            'bg-gray-300 font-semibold': index === 1,
-            'bg-yellow-100 font-semibold': index === 2,
-            'border-t': index > 2,
-          }"
-        >
-          <td class="p-2">{{ index + 1 }}</td>
-          <td class="p-2">{{ pos.nombre }}</td>
-          <td class="p-2">{{ pos.puntos }}</td>
+        <tr v-for="(p, index) in podio" :key="p.$id" class="text-center">
+          <td class="py-2 px-4">
+            <span v-if="index === 0">🥇</span>
+            <span v-else-if="index === 1">🥈</span>
+            <span v-else-if="index === 2">🥉</span>
+            <span v-else>{{ index + 1 }}</span>
+          </td>
+          <td class="py-2 px-4 text-left">{{ p.Nombres }}</td>
+          <td class="py-2 px-4 font-bold text-green-700">{{ p.Puntos }}</td>
         </tr>
       </tbody>
     </table>
   </div>
 </template>
+
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useNuxtApp } from '#app';
+import { ref, onMounted } from 'vue'
+import { Query } from 'appwrite'
 
-const { $databases } = useNuxtApp();
-const DB_ID = '686c5e84001c62957f30';
-const BATALLA_COLL = '6876fb3e000b5fe1380f'; 
-const PARTICIPANTES_COLL = '686c5fd50012c057e441'; 
+const { $databases } = useNuxtApp()
+const toast = useToast()
 
-const registros = ref([]);
-const participantesMap = ref({}); // id -> nombre
+const dbId = '686c5e84001c62957f30'
+const collectionBatalla = '6876fb3e000b5fe1380f'
+const collectionParticipantes = '686c5fd50012c057e441'
 
-onMounted(async () => {
+const podio = ref([])
+
+const cargarPodio = async () => {
   try {
-    const batallas = await $databases.listDocuments(DB_ID, BATALLA_COLL, []);
-    registros.value = batallas.documents;
+    const batallaDocs = await $databases.listDocuments(dbId, collectionBatalla)
+    const podioConNombres = []
 
-    const uniqueIds = new Set();
-    registros.value.forEach(b => {
-      if(b.Participante1) uniqueIds.add(b.Participante1);
-      if(b.Participante2) uniqueIds.add(b.Participante2);
-    });
-
-    const allParticipants = await $databases.listDocuments(DB_ID, PARTICIPANTES_COLL, []);
-    allParticipants.documents.forEach(p => {
-      if (uniqueIds.has(p.$id)) {
-        participantesMap.value[p.$id] = p.Nombres;
+    for (const doc of batallaDocs.documents) {
+      try {
+        // Tomar el ID correctamente, ya sea que sea objeto o string
+        const participanteId = doc.Participante?.$id || doc.Participante
+        const participante = await $databases.getDocument(dbId, collectionParticipantes, participanteId)
+        podioConNombres.push({
+          ...doc,
+          Nombres: participante.Nombres,
+          Puntos: parseFloat(doc.Puntos ?? 0)
+        })
+      } catch (e) {
+        console.warn(`Participante con ID ${doc.Participante} no existe y será omitido.`)
       }
-    });
-  } catch (e) {
-    console.error('Error cargando datos', e);
+    }
+
+    podio.value = podioConNombres
+      .sort((a, b) => b.Puntos - a.Puntos)
+      .slice(0, 8)
+
+  } catch (error) {
+    console.error("Error cargando podio:", error)
+    toast.add({ title: 'Error cargando podio', color: 'red' })
   }
-});
+}
 
-
-const posiciones = computed(() => {
-  const puntosMap = {};
-
-  registros.value.forEach(b => {
-    if(b.Participante1){
-      if (!puntosMap[b.Participante1]) puntosMap[b.Participante1] = 0;
-      puntosMap[b.Participante1] += b.Puntos1 || 0;
-    }
-    if(b.Participante2){
-      if (!puntosMap[b.Participante2]) puntosMap[b.Participante2] = 0;
-      puntosMap[b.Participante2] += b.Puntos2 || 0;
-    }
-  });
-
-
-  const arrayPos = Object.entries(puntosMap).map(([id, pts]) => ({
-    id,
-    puntos: pts,
-    nombre: participantesMap.value[id] || 'Desconocido',
-  }))
-
-  arrayPos.sort((a, b) => b.puntos - a.puntos);
-
-  return arrayPos;
-});
+onMounted(() => {
+  cargarPodio()
+})
 </script>
-
