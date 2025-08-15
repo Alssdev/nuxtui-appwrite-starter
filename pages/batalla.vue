@@ -52,14 +52,13 @@ const toast = useToast()
 
 const dbId = '686c5e84001c62957f30' // tu base de datos
 const collectionParticipantes = '686c5fd50012c057e441' // colección general de participantes
-const collectionBatalla = '6876fb3e000b5fe1380f' // nueva colección específica de Batalla
+const collectionBatalla = '6876fb3e000b5fe1380f' 
 
 const participantesBatalla = ref([])
 
-// Cargar participantes de la categoría Batalla
 const loadParticipantesBatalla = async () => {
   try {
-    // 1️⃣ Obtener todos los participantes inscritos en Batalla
+
     const res = await $databases.listDocuments(dbId, collectionParticipantes, [
       Query.or([
         Query.equal('Categoria_1', 'Batalla'),
@@ -67,7 +66,6 @@ const loadParticipantesBatalla = async () => {
       ])
     ])
 
-    // 2️⃣ Crear documentos en Batalla_Competencia si no existen
     const batallaDocs = []
     for (const p of res.documents) {
       try {
@@ -75,7 +73,7 @@ const loadParticipantesBatalla = async () => {
           Query.equal('Participante', p.$id)
         ])
         if (existing.total === 0) {
-          // Crear documento inicial
+
           const nuevo = await $databases.createDocument(
             dbId,
             collectionBatalla,
@@ -102,7 +100,6 @@ const loadParticipantesBatalla = async () => {
   }
 }
 
-// Actualizar puntos en Appwrite
 const actualizarPuntos = async (p) => {
   if (!p.nuevoPunto) return
 

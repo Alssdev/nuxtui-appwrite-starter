@@ -51,7 +51,7 @@ const cargarPodio = async () => {
 
     for (const doc of batallaDocs.documents) {
       try {
-        // Tomar el ID correctamente, ya sea que sea objeto o string
+g
         const participanteId = doc.Participante?.$id || doc.Participante
         const participante = await $databases.getDocument(dbId, collectionParticipantes, participanteId)
         podioConNombres.push({

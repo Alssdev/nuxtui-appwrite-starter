@@ -82,7 +82,7 @@ const collectionParticipantes = '686c5fd50012c057e441'
 const collectionTiempos = '686efc5f0022577bcd81'
 
 const loadParticipantesReporte = async () => {
-  // 1️⃣ Obtener solo los participantes que están en fase Clasificatoria
+
   const tiempos = await $databases.listDocuments(dbId, collectionTiempos, [
     Query.equal('Fase', ['Clasificatoria'])
   ])
@@ -94,9 +94,8 @@ const loadParticipantesReporte = async () => {
     return
   }
 
-  // 2️⃣ Obtener solo los participantes cuyo ID esté en esa lista
   const chunks = []
-  const chunkSize = 20 // Appwrite limita Query.equal a 10 valores por consulta
+  const chunkSize = 20 
   for (let i = 0; i < idsCompetidores.length; i += chunkSize) {
     chunks.push(idsCompetidores.slice(i, i + chunkSize))
   }
