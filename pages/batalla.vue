@@ -1,161 +1,129 @@
 <template>
-  <div class="p-6 max-w-md mx-auto bg-white rounded-lg shadow">
-    <h1 class="text-2xl font-bold mb-6 text-center">Registro de Competencia - Robot de Batalla</h1>
+  <div class="p-6 max-w-4xl mx-auto bg-white rounded-lg shadow-md">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">Competencia de Batalla - Puntajes</h1>
+      <NuxtLink to="/" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+        ← Regresar
+      </NuxtLink>
+    </div>
 
-    <form @submit.prevent="guardarBatalla" class="flex flex-col gap-4 mb-6">
-      <div>
-        <label class="block mb-1 font-semibold">Categoría:</label>
-        <select v-model="categoria" class="w-full border rounded p-2">
-          <option disabled value="">Selecciona una categoría</option>
-          <option value="Senior">Senior</option>
-          <option value="Junior">Junior</option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block mb-1 font-semibold">Fase:</label>
-        <select v-model="fase" class="w-full border rounded p-2">
-          <option disabled value="">Selecciona una fase</option>
-          <option value="Clasificatoria">Clasificatoria</option>
-          <!-- <option value="Semifinal">Semifinal</option> -->
-          <option value="Final">Final</option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block mb-1 font-semibold">Participante 1:</label>
-        <select v-model="participante1" class="w-full border rounded p-2">
-          <option disabled value="">Selecciona uno</option>
-          <option
-            v-for="p in participantes"
-            :key="p.$id"
-            :value="p.$id"
-            :disabled="p.$id === participante2"
-          >
-            {{ p.Nombres }}
-          </option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block mb-1 font-semibold">Puntos Participante 1:</label>
-        <input v-model.number="puntos1" type="number" min="0" class="w-full border rounded p-2" />
-      </div>
-
-      <div>
-        <label class="block mb-1 font-semibold">Participante 2:</label>
-        <select v-model="participante2" class="w-full border rounded p-2">
-          <option disabled value="">Selecciona uno</option>
-          <option
-            v-for="p in participantes"
-            :key="p.$id"
-            :value="p.$id"
-            :disabled="p.$id === participante1"
-          >
-            {{ p.Nombres }}
-          </option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block mb-1 font-semibold">Puntos Participante 2:</label>
-        <input v-model.number="puntos2" type="number" min="0" class="w-full border rounded p-2" />
-      </div>
-
-      <button
-        type="submit"
-        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mt-4">
-        Guardar
-      </button>
-    </form>
+    <table class="min-w-full bg-white rounded-lg shadow-md overflow-hidden">
+      <thead class="bg-blue-100 text-gray-800">
+        <tr>
+          <th class="py-2 px-4 text-left">Participante</th>
+          <th class="py-2 px-4">Puntos</th>
+          <th class="py-2 px-4">Modificar Puntos</th>
+          <th class="py-2 px-4">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="p in participantesBatalla" :key="p.$id" class="text-center">
+          <td class="py-2 px-4 text-left">{{ p.Nombres }}</td>
+          <td class="py-2 px-4">{{ p.Puntos ?? 0 }}</td>
+          <td class="py-2 px-4">
+            <input 
+              type="number" 
+              step="0.01" 
+              v-model.number="p.nuevoPunto" 
+              class="border rounded px-2 py-1 w-20 text-center"
+              placeholder="0.0"
+            />
+          </td>
+          <td class="py-2 px-4">
+            <button 
+              class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
+              @click="actualizarPuntos(p)"
+            >
+              Actualizar
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useNuxtApp } from '#app';
-import { ID, Query } from 'appwrite';
+import { ref, onMounted } from 'vue'
+import { Query, ID } from 'appwrite'
 
-const { $databases } = useNuxtApp();
-const DB_ID = '686c5e84001c62957f30';
-const PARTICIPANTES_COLL = '686c5fd50012c057e441';
-const BATALLA_COLL = '6876fb3e000b5fe1380f';
+const { $databases } = useNuxtApp()
+const toast = useToast()
 
-const participantes = ref([]);
-const registros = ref([]);
-const categoria = ref('');
-const fase = ref('');
-const participante1 = ref('');
-const participante2 = ref('');
-const puntos1 = ref(0);
-const puntos2 = ref(0);
+const dbId = '686c5e84001c62957f30' // tu base de datos
+const collectionParticipantes = '686c5fd50012c057e441' // colección general de participantes
+const collectionBatalla = '6876fb3e000b5fe1380f' 
 
-const nombresMap = ref({});
+const participantesBatalla = ref([])
 
-const obtenerNombre = (id) => nombresMap.value[id] || 'Desconocido';
+const loadParticipantesBatalla = async () => {
+  try {
 
-onMounted(async () => {
-  const res = await $databases.listDocuments(
-    DB_ID,
-    PARTICIPANTES_COLL,
-    [
+    const res = await $databases.listDocuments(dbId, collectionParticipantes, [
       Query.or([
         Query.equal('Categoria_1', 'Batalla'),
-        Query.equal('Categoria_2', 'Batalla'),
-      ]),
-      Query.limit(100),
-    ]
-  );
-  participantes.value = res.documents;
+        Query.equal('Categoria_2', 'Batalla')
+      ])
+    ])
 
-  res.documents.forEach(p => {
-    nombresMap.value[p.$id] = p.Nombres;
-  });
+    const batallaDocs = []
+    for (const p of res.documents) {
+      try {
+        const existing = await $databases.listDocuments(dbId, collectionBatalla, [
+          Query.equal('Participante', p.$id)
+        ])
+        if (existing.total === 0) {
 
-  const batallasRes = await $databases.listDocuments(DB_ID, BATALLA_COLL, [Query.limit(50)]);
-  registros.value = batallasRes.documents;
-});
+          const nuevo = await $databases.createDocument(
+            dbId,
+            collectionBatalla,
+            ID.unique(),
+            {
+              Participante: p.$id,
+              Puntos: 0
+            }
+          )
+          batallaDocs.push({...nuevo, Nombres: p.Nombres, nuevoPunto: 0})
+        } else {
+          const doc = existing.documents[0]
+          batallaDocs.push({...doc, Nombres: p.Nombres, nuevoPunto: 0})
+        }
+      } catch (e) {
+        console.error("Error al crear doc Batalla:", e)
+      }
+    }
 
-const guardarBatalla = async () => {
-  if (!categoria.value || !fase.value || !participante1.value || !participante2.value) {
-    alert('Completa todos los campos');
-    return;
+    participantesBatalla.value = batallaDocs
+  } catch (error) {
+    console.error(error)
+    toast.add({ title: 'Error al cargar participantes', color: 'red' })
   }
+}
+
+const actualizarPuntos = async (p) => {
+  if (!p.nuevoPunto) return
 
   try {
-    await $databases.createDocument(DB_ID, BATALLA_COLL, ID.unique(), {
-      Categoria: categoria.value,
-      Fase: fase.value,
-      Participante1: participante1.value,
-      Participante2: participante2.value,
-      Puntos1: puntos1.value,
-      Puntos2: puntos2.value,
-    });
+    const puntosActuales = p.Puntos ?? 0
+    const nuevosPuntos = parseFloat(puntosActuales) + parseFloat(p.nuevoPunto)
 
-    registros.value.push({
-      Categoria: categoria.value,
-      Fase: fase.value,
-      Participante1: participante1.value,
-      Participante2: participante2.value,
-      Puntos1: puntos1.value,
-      Puntos2: puntos2.value,
-    });
+    await $databases.updateDocument(
+      dbId,
+      collectionBatalla,
+      p.$id,
+      { Puntos: nuevosPuntos }
+    )
 
-    categoria.value = '';
-    fase.value = '';
-    participante1.value = '';
-    participante2.value = '';
-    puntos1.value = 0;
-    puntos2.value = 0;
-  } catch (err) {
-    console.error('Error al guardar', err);
-    alert('Ocurrió un error al guardar');
+    p.Puntos = nuevosPuntos
+    p.nuevoPunto = 0
+    toast.add({ title: `Puntos actualizados a ${nuevosPuntos}` })
+  } catch (e) {
+    console.error(e)
+    toast.add({ title: 'Error al actualizar puntos', color: 'red' })
   }
-  try {
-  const test = await $databases.listDocuments(DB_ID, BATALLA_COLL, [Query.limit(1)]);
-  console.log('Consulta exitosa:', test);
-} catch (error) {
-  console.error('Error en consulta:', error);
-} 
-};
+}
+
+onMounted(() => {
+  loadParticipantesBatalla()
+})
 </script>

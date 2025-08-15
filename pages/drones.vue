@@ -1,7 +1,7 @@
 <template>
   <div class="p-6 max-w-3xl mx-auto bg-white rounded-lg shadow-md">
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">Registrar Tiempos - Drones</h1>
+      <h1 class="text-2xl font-bold text-gray-800">Registrar Tiempos - Final Drones</h1>
       <span class="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded">Ronda Activa</span>
     </div>
 
@@ -63,7 +63,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ID, Query } from 'appwrite'
 const toast = useToast()
 const { $databases } = useNuxtApp()
@@ -77,18 +77,39 @@ const form = ref({
 
 const participantes = ref([])
 
-const response = await $databases.listDocuments(
-  '686c5e84001c62957f30', /* Base de datos */
-  '686c5fd50012c057e441', /* Participantes */
-  [
-    Query.or([
-      Query.equal('Categoria_1', 'Drones'),
-      Query.equal('Categoria_2', 'Drones')
-    ]),
-    Query.limit(30)
-  ]
-)
-participantes.value = response.documents
+const dbId = '686c5e84001c62957f30'
+const collectionParticipantes = '686c5fd50012c057e441'
+const collectionTiempos = '686efc5f0022577bcd81'
+
+const loadParticipantesReporte = async () => {
+
+  const tiempos = await $databases.listDocuments(dbId, collectionTiempos, [
+    Query.equal('Fase', ['Clasificatoria'])
+  ])
+
+  const idsCompetidores = [...new Set(tiempos.documents.map(doc => doc.Participante.$id))]
+
+  if (idsCompetidores.length === 0) {
+    participantes.value = []
+    return
+  }
+
+  const chunks = []
+  const chunkSize = 20 
+  for (let i = 0; i < idsCompetidores.length; i += chunkSize) {
+    chunks.push(idsCompetidores.slice(i, i + chunkSize))
+  }
+
+  let filtrados = []
+  for (const chunk of chunks) {
+    const res = await $databases.listDocuments(dbId, collectionParticipantes, [
+      Query.equal('$id', chunk)
+    ])
+    filtrados = filtrados.concat(res.documents)
+  }
+
+  participantes.value = filtrados
+}
 
 async function create() {
   const { ParticipanteSeleccionado, Tiempo, Rondas, Fase } = form.value
@@ -100,11 +121,11 @@ async function create() {
 
   try {
     await $databases.createDocument(
-      '686c5e84001c62957f30', /* Base de datos */
-      '686efc5f0022577bcd81', /* categoria  */
+      dbId,
+      collectionTiempos,
       ID.unique(),
       {
-        Participante: ParticipanteSeleccionado, //Quitar el .$id
+        Participante: ParticipanteSeleccionado,
         Tiempo,
         Rondas,
         Fase
@@ -124,5 +145,7 @@ async function create() {
   }
 }
 
+onMounted(() => {
+  loadParticipantesReporte()
+})
 </script>
-
